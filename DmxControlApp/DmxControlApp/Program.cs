@@ -52,6 +52,25 @@ app.MapPost("/api/ai/preset", async ([FromBody] AiPresetRequest req, IAiPresetSe
     return Results.Ok(new AiPresetResponse(values));
 });
 
+// Ollama models list
+app.MapGet("/api/ai/ollama/models", async (IAppSettingsService settingsSvc, IHttpClientFactory http) =>
+{
+    var baseUrl = settingsSvc.Get().AI.Ollama.BaseUrl?.TrimEnd('/') ?? "http://localhost:11434";
+    var client = http.CreateClient();
+    client.BaseAddress = new Uri(baseUrl);
+    try
+    {
+        var res = await client.GetAsync("/api/tags");
+        if (!res.IsSuccessStatusCode) return Results.Ok(Array.Empty<object>());
+        var json = await res.Content.ReadAsStringAsync();
+        return Results.Content(json, "application/json");
+    }
+    catch
+    {
+        return Results.Ok(Array.Empty<object>());
+    }
+});
+
 // Bluetooth stub endpoints
 app.MapGet("/api/bluetooth/list", () => Results.Ok(Array.Empty<object>()));
 app.MapPost("/api/bluetooth/connect", () => Results.Ok());

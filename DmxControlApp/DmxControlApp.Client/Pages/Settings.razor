@@ -45,7 +45,19 @@
         </div>
         <div class="mb-3">
             <label class="form-label">Ollama Model</label>
-            <InputText class="form-control" @bind-Value="settings.AI.Ollama.Model" />
+            <div class="input-group">
+                <InputText class="form-control" @bind-Value="settings.AI.Ollama.Model" />
+                <button type="button" class="btn btn-outline-secondary" @onclick="LoadOllamaModels">Load Models</button>
+            </div>
+            <div class="mt-2">
+                <select class="form-select" @onchange="OnModelChanged">
+                    <option value="">-- Select a model --</option>
+                    @foreach (var m in availableModels)
+                    {
+                        <option value="@m">@m</option>
+                    }
+                </select>
+            </div>
         </div>
     </div>
 
@@ -56,6 +68,7 @@
     private SettingsDto settings = new();
 
     [Inject] private HttpClient Http { get; set; } = default!;
+    private List<string> availableModels = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -73,6 +86,25 @@
         }
     }
 
+    private async Task LoadOllamaModels()
+    {
+        try
+        {
+            var res = await Http.GetFromJsonAsync<OllamaTagsResponse>("/api/ai/ollama/models");
+            availableModels = res?.models?.Select(m => m.model ?? string.Empty).Where(s => !string.IsNullOrWhiteSpace(s)).ToList() ?? new();
+        }
+        catch
+        {
+            availableModels = new();
+        }
+    }
+
+    private void OnModelChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        if (!string.IsNullOrWhiteSpace(val)) settings.AI.Ollama.Model = val;
+    }
+
     private sealed class SettingsDto
     {
         public ArtNetSettings ArtNet { get; set; } = new();
@@ -88,5 +120,7 @@
     }
     private sealed class OpenAISettings { public string? BaseUrl { get; set; } public string? Model { get; set; } public string? ApiKey { get; set; } }
     private sealed class OllamaSettings { public string? BaseUrl { get; set; } public string? Model { get; set; } }
+    private sealed class OllamaTagsResponse { public List<OllamaModel>? models { get; set; } }
+    private sealed class OllamaModel { public string? name { get; set; } public string? model { get; set; } }
 }
 

@@ -1,0 +1,47 @@
+@page "/channels"
+@rendermode InteractiveWebAssembly
+
+<PageTitle>Channels</PageTitle>
+
+<h1>DMX Channels</h1>
+
+<div class="row g-2">
+    @for (var i = 1; i <= 16; i++)
+    {
+        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+            <div class="card p-2 text-center">
+                <label>Ch @i</label>
+                <input type="range" min="0" max="255" value="@channelValues[i-1]" @oninput="(e)=>OnChannelChanged(i-1, e)" class="form-range" />
+                <div>@channelValues[i-1]</div>
+            </div>
+        </div>
+    }
+    <div class="col-12 mt-2">
+        <button class="btn btn-primary" @onclick="SendFrame">Invia Frame Art-Net</button>
+    </div>
+</div>
+
+@code {
+    private byte[] channelValues = new byte[16];
+
+    private void OnChannelChanged(int index, ChangeEventArgs e)
+    {
+        if (byte.TryParse(Convert.ToString(e.Value), out var v))
+        {
+            channelValues[index] = v;
+        }
+    }
+
+    [Inject] private HttpClient Http { get; set; } = default!;
+
+    private async Task SendFrame()
+    {
+        var payload = new
+        {
+            universe = 0,
+            values = channelValues
+        };
+        await Http.PostAsJsonAsync("/api/artnet/send", payload);
+    }
+}
+

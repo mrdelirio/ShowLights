@@ -12,6 +12,7 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddSingleton<IArtnetService, ArtnetService>();
 builder.Services.AddSingleton<IAiPresetService, AiPresetService>();
+builder.Services.AddHttpClient();
 
 var app = builder.Build();
 

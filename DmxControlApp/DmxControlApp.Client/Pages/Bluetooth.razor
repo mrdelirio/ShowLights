@@ -6,7 +6,7 @@
 <h1>Bluetooth LE (stub)</h1>
 
 <div class="d-flex gap-2 align-items-center">
-    <button class="btn btn-primary" @onclick="Scan">Scan</button>
+    <button class="btn btn-primary" @onclick="Scan">Scan (Web Bluetooth)</button>
     <button class="btn btn-secondary" @onclick="Connect" disabled="@(selectedDeviceId is null)">Connect</button>
 </div>
 
@@ -25,12 +25,19 @@
     private string? selectedDeviceId;
 
     [Inject] private HttpClient Http { get; set; } = default!;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
 
     private async Task Scan()
     {
-        // Stub: server returns empty list; you can integrate Web Bluetooth via JS later
-        var res = await Http.GetFromJsonAsync<List<Device>>("/api/bluetooth/list");
-        devices = res ?? new();
+        try
+        {
+            var d = await JS.InvokeAsync<Device>("dmxBle.requestDevice");
+            devices = new List<Device> { d };
+        }
+        catch
+        {
+            devices = new();
+        }
     }
 
     private void Select(string id) => selectedDeviceId = id;
@@ -38,7 +45,11 @@
     private async Task Connect()
     {
         if (selectedDeviceId is null) return;
-        await Http.PostAsJsonAsync("/api/bluetooth/connect", new { id = selectedDeviceId });
+        try
+        {
+            await JS.InvokeVoidAsync("dmxBle.connect");
+        }
+        catch { }
     }
 
     private sealed class Device

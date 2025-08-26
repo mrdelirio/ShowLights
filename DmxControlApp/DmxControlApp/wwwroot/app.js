@@ -55,3 +55,23 @@ window.dmxAudio = (function () {
     return { start, stop };
 })();
 
+// Web Bluetooth interop (basic discovery + connect)
+window.dmxBle = (function () {
+    let device;
+    let server;
+
+    async function requestDevice() {
+        if (!navigator.bluetooth) throw new Error('Web Bluetooth not supported');
+        device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [] });
+        return { id: device.id, name: device.name };
+    }
+
+    async function connect() {
+        if (!device) throw new Error('No device selected');
+        server = await device.gatt.connect();
+        return true;
+    }
+
+    return { requestDevice, connect };
+})();
+

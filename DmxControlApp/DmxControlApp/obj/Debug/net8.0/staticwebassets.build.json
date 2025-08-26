@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "1IdKgOnESxr6765aTwHvYt4unKgEsTVD4kJ1rk1NMYM=",
+  "Hash": "dMkgM/YcDNVtXqeaYdKXzQDj19Kws1quzVBiJpovi6s=",
   "Source": "DmxControlApp",
   "BasePath": "_content/DmxControlApp",
   "Mode": "Default",
@@ -11,10 +11,10 @@
       "Version": 2,
       "Source": "DmxControlApp.Client",
       "GetPublishAssetsTargets": "ComputeFilesToPublish;GetCurrentProjectPublishStaticWebAssetItems",
-      "AdditionalPublishProperties": "_PublishingBlazorWasmProject=true;BuildProjectReferences=false;ResolveAssemblyReferencesFindRelatedSatellites=true",
+      "AdditionalPublishProperties": "_PublishingBlazorWasmProject=true;BuildProjectReferences=false;ResolveAssemblyReferencesFindRelatedSatellites=true;Configuration=Debug;Platform=AnyCPU",
       "AdditionalPublishPropertiesToRemove": "NoBuild;RuntimeIdentifier;WebPublishProfileFile;TargetFramework",
       "GetBuildAssetsTargets": "GetCurrentProjectBuildStaticWebAssetItems",
-      "AdditionalBuildProperties": "",
+      "AdditionalBuildProperties": "Configuration=Debug;Platform=AnyCPU",
       "AdditionalBuildPropertiesToRemove": "RuntimeIdentifier;SelfContained;WebPublishProfileFile;TargetFramework"
     }
   ],

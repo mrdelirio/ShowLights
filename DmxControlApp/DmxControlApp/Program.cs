@@ -11,6 +11,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveWebAssemblyComponents();
 
 builder.Services.AddSingleton<IArtnetService, ArtnetService>();
+builder.Services.AddSingleton<IAiPresetService, AiPresetService>();
 
 var app = builder.Build();
 
@@ -42,5 +43,15 @@ app.MapPost("/api/artnet/send", async ([FromBody] DmxFrame frame, IArtnetService
     await artnet.SendDmxAsync(frame.Universe, frame.Values, frame.TargetIp, ct);
     return Results.Ok();
 });
+
+app.MapPost("/api/ai/preset", async ([FromBody] AiPresetRequest req, IAiPresetService ai, CancellationToken ct) =>
+{
+    var values = await ai.GeneratePresetAsync(req.Prompt, req.Channels, ct);
+    return Results.Ok(new AiPresetResponse(values));
+});
+
+// Bluetooth stub endpoints
+app.MapGet("/api/bluetooth/list", () => Results.Ok(Array.Empty<object>()));
+app.MapPost("/api/bluetooth/connect", () => Results.Ok());
 
 app.Run();

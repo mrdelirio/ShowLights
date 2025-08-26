@@ -22,6 +22,10 @@ build_property.GenerateRazorMetadataSourceChecksumAttributes =
 build_property.MSBuildProjectDirectory = /workspace/DmxControlApp/DmxControlApp.Client
 build_property._RazorSourceGeneratorDebug = 
 
+[/workspace/DmxControlApp/DmxControlApp.Client/Pages/Bluetooth.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQmx1ZXRvb3RoLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
 [/workspace/DmxControlApp/DmxControlApp.Client/Pages/Channels.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQ2hhbm5lbHMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 

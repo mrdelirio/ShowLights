@@ -1,0 +1,50 @@
+@page "/bluetooth"
+@rendermode InteractiveWebAssembly
+
+<PageTitle>Bluetooth</PageTitle>
+
+<h1>Bluetooth LE (stub)</h1>
+
+<div class="d-flex gap-2 align-items-center">
+    <button class="btn btn-primary" @onclick="Scan">Scan</button>
+    <button class="btn btn-secondary" @onclick="Connect" disabled="@(selectedDeviceId is null)">Connect</button>
+</div>
+
+<ul class="list-group mt-3">
+    @foreach (var d in devices)
+    {
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>@d.Name (@d.Id)</span>
+            <button class="btn btn-sm btn-outline-primary" @onclick="() => Select(d.Id)">Select</button>
+        </li>
+    }
+</ul>
+
+@code {
+    private List<Device> devices = new();
+    private string? selectedDeviceId;
+
+    [Inject] private HttpClient Http { get; set; } = default!;
+
+    private async Task Scan()
+    {
+        // Stub: server returns empty list; you can integrate Web Bluetooth via JS later
+        var res = await Http.GetFromJsonAsync<List<Device>>("/api/bluetooth/list");
+        devices = res ?? new();
+    }
+
+    private void Select(string id) => selectedDeviceId = id;
+
+    private async Task Connect()
+    {
+        if (selectedDeviceId is null) return;
+        await Http.PostAsJsonAsync("/api/bluetooth/connect", new { id = selectedDeviceId });
+    }
+
+    private sealed class Device
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+    }
+}
+

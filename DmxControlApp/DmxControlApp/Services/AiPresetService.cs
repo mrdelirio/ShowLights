@@ -13,11 +13,13 @@ public sealed class AiPresetService : IAiPresetService
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _configuration;
+    private readonly IAppSettingsService _settingsService;
 
-    public AiPresetService(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+    public AiPresetService(IHttpClientFactory httpClientFactory, IConfiguration configuration, IAppSettingsService settingsService)
     {
         _httpClientFactory = httpClientFactory;
         _configuration = configuration;
+        _settingsService = settingsService;
     }
 
     public async Task<byte[]> GeneratePresetAsync(string? prompt, int channelCount, CancellationToken cancellationToken = default)
@@ -25,7 +27,7 @@ public sealed class AiPresetService : IAiPresetService
         var count = Math.Clamp(channelCount, 1, 512);
 
         // Try provider if configured
-        var provider = _configuration["AI:Provider"]?.Trim();
+        var provider = _settingsService.Get().AI.Provider?.Trim();
         if (!string.IsNullOrWhiteSpace(provider))
         {
             try
@@ -52,10 +54,11 @@ public sealed class AiPresetService : IAiPresetService
 
     private async Task<byte[]?> GenerateWithOpenAiAsync(string? prompt, int count, CancellationToken ct)
     {
-        var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? _configuration["AI:OpenAI:ApiKey"];
+        var settingsOpenAi = _settingsService.Get().AI.OpenAI;
+        var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? settingsOpenAi.ApiKey ?? _configuration["AI:OpenAI:ApiKey"];
         if (string.IsNullOrWhiteSpace(apiKey)) return null;
-        var baseUrl = _configuration["AI:OpenAI:BaseUrl"] ?? "https://api.openai.com/v1";
-        var model = _configuration["AI:OpenAI:Model"] ?? "gpt-4o-mini";
+        var baseUrl = settingsOpenAi.BaseUrl ?? _configuration["AI:OpenAI:BaseUrl"] ?? "https://api.openai.com/v1";
+        var model = settingsOpenAi.Model ?? _configuration["AI:OpenAI:Model"] ?? "gpt-4o-mini";
 
         var client = _httpClientFactory.CreateClient();
         client.BaseAddress = new Uri(baseUrl);
@@ -88,8 +91,9 @@ public sealed class AiPresetService : IAiPresetService
 
     private async Task<byte[]?> GenerateWithOllamaAsync(string? prompt, int count, CancellationToken ct)
     {
-        var baseUrl = _configuration["AI:Ollama:BaseUrl"] ?? "http://localhost:11434";
-        var model = _configuration["AI:Ollama:Model"] ?? "llama3.1";
+        var settingsOllama = _settingsService.Get().AI.Ollama;
+        var baseUrl = settingsOllama.BaseUrl ?? _configuration["AI:Ollama:BaseUrl"] ?? "http://localhost:11434";
+        var model = settingsOllama.Model ?? _configuration["AI:Ollama:Model"] ?? "llama3.1";
 
         var client = _httpClientFactory.CreateClient();
         client.BaseAddress = new Uri(baseUrl.TrimEnd('/'));

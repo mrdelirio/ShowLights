@@ -1,0 +1,92 @@
+@page "/settings"
+@rendermode InteractiveWebAssembly
+
+<PageTitle>Settings</PageTitle>
+
+<h1>Settings</h1>
+
+<EditForm Model="settings" OnValidSubmit="Save">
+    <DataAnnotationsValidator />
+    <div class="card p-3 mb-3">
+        <h5>Art-Net</h5>
+        <div class="mb-3">
+            <label class="form-label">Target IP</label>
+            <InputText class="form-control" @bind-Value="settings.ArtNet.TargetIp" />
+        </div>
+    </div>
+
+    <div class="card p-3 mb-3">
+        <h5>AI</h5>
+        <div class="mb-3">
+            <label class="form-label">Provider</label>
+            <InputSelect class="form-select" @bind-Value="settings.AI.Provider">
+                <option value="">None</option>
+                <option value="OpenAI">OpenAI</option>
+                <option value="Ollama">Ollama</option>
+            </InputSelect>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">OpenAI BaseUrl</label>
+            <InputText class="form-control" @bind-Value="settings.AI.OpenAI.BaseUrl" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">OpenAI Model</label>
+            <InputText class="form-control" @bind-Value="settings.AI.OpenAI.Model" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">OpenAI API Key</label>
+            <InputText class="form-control" type="password" @bind-Value="settings.AI.OpenAI.ApiKey" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Ollama BaseUrl</label>
+            <InputText class="form-control" @bind-Value="settings.AI.Ollama.BaseUrl" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Ollama Model</label>
+            <InputText class="form-control" @bind-Value="settings.AI.Ollama.Model" />
+        </div>
+    </div>
+
+    <button class="btn btn-primary" type="submit">Save</button>
+</EditForm>
+
+@code {
+    private SettingsDto settings = new();
+
+    [Inject] private HttpClient Http { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var res = await Http.GetFromJsonAsync<SettingsDto>("/api/settings")
+                 ?? new SettingsDto();
+        settings = res;
+    }
+
+    private async Task Save()
+    {
+        var res = await Http.PostAsJsonAsync("/api/settings", settings);
+        if (res.IsSuccessStatusCode)
+        {
+            // no-op; in real app show toast
+        }
+    }
+
+    private sealed class SettingsDto
+    {
+        public ArtNetSettings ArtNet { get; set; } = new();
+        public AISettings AI { get; set; } = new();
+    }
+
+    private sealed class ArtNetSettings { public string? TargetIp { get; set; } }
+    private sealed class AISettings
+    {
+        public string? Provider { get; set; }
+        public OpenAISettings OpenAI { get; set; } = new();
+        public OllamaSettings Ollama { get; set; } = new();
+    }
+    private sealed class OpenAISettings { public string? BaseUrl { get; set; } public string? Model { get; set; } public string? ApiKey { get; set; } }
+    private sealed class OllamaSettings { public string? BaseUrl { get; set; } public string? Model { get; set; } }
+}
+

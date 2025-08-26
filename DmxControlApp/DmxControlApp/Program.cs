@@ -13,6 +13,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddSingleton<IArtnetService, ArtnetService>();
 builder.Services.AddSingleton<IAiPresetService, AiPresetService>();
 builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IAppSettingsService, AppSettingsService>();
 
 var app = builder.Build();
 
@@ -54,5 +55,13 @@ app.MapPost("/api/ai/preset", async ([FromBody] AiPresetRequest req, IAiPresetSe
 // Bluetooth stub endpoints
 app.MapGet("/api/bluetooth/list", () => Results.Ok(Array.Empty<object>()));
 app.MapPost("/api/bluetooth/connect", () => Results.Ok());
+
+// Settings endpoints
+app.MapGet("/api/settings", (IAppSettingsService svc) => Results.Ok(svc.GetSanitized()));
+app.MapPost("/api/settings", async ([FromBody] AppSettings settings, IAppSettingsService svc, CancellationToken ct) =>
+{
+    var updated = await svc.UpdateAsync(settings, ct);
+    return Results.Ok(updated);
+});
 
 app.Run();

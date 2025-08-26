@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "DmxControlApp.Client",
   "resources": {
-    "hash": "sha256-gBIXHSN61bVotqwLfeXCdCGLx6SPGtxwlUEP5uXi+CQ=",
+    "hash": "sha256-MKM40Fi9TfZ4zzO7zwx1TM9vpaTz5A3eRxar7WXJGKk=",
     "jsModuleNative": {
       "dotnet.native.8.0.19.nexe7oc9qc.js": "sha256-O/NCYcAN9uPocD7ns7AzF/cqx7f5vL1PTJCQs0vEXyk="
     },
@@ -208,10 +208,10 @@
       "mscorlib.wasm": "sha256-RLW/7NVuhoPfq151II3kX2kWHgBwQgpCw9aemQNg3to=",
       "netstandard.wasm": "sha256-lAg5WvTiA8wbsIwlr51xh0YWpXT9F5EX3Cnv+11O/mU=",
       "System.Private.CoreLib.wasm": "sha256-3O3muuRQwoLRecYRjfIFWUURvTjP4EmD2O8wYg2UDNY=",
-      "DmxControlApp.Client.wasm": "sha256-knVvla143zU97aeZJKDjV0mAtjzdEGAA5uzYN054Evo="
+      "DmxControlApp.Client.wasm": "sha256-cEasA/HSEaimLo3vQIYpKaUmYCcl7B+RgsyymPgqQAc="
     },
     "pdb": {
-      "DmxControlApp.Client.pdb": "sha256-ukjfh9cDtJ8tFcS66ZIbooz8zVs95EXg1gkXgJdDzYI="
+      "DmxControlApp.Client.pdb": "sha256-9UhT3xp1bh7tLQpdTudWyALgy42njmGFhPJQ+wHxgHE="
     }
   },
   "cacheBootResources": true,

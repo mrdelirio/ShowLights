@@ -11,16 +11,16 @@ public interface IArtnetService
 public sealed class ArtnetService : IArtnetService, IDisposable
 {
     private readonly UdpClient _udpClient;
-    private readonly string _defaultTargetIp;
+    private readonly IAppSettingsService _settingsService;
     private const int ArtnetPort = 6454;
 
-    public ArtnetService(IConfiguration configuration)
+    public ArtnetService(IConfiguration configuration, IAppSettingsService settingsService)
     {
         _udpClient = new UdpClient
         {
             EnableBroadcast = true
         };
-        _defaultTargetIp = configuration["ArtNet:TargetIp"] ?? "255.255.255.255";
+        _settingsService = settingsService;
     }
 
     public async Task SendDmxAsync(int universe, byte[] values, string? targetIp = null, CancellationToken cancellationToken = default)
@@ -68,7 +68,8 @@ public sealed class ArtnetService : IArtnetService, IDisposable
         // Data
         Buffer.BlockCopy(values, 0, buffer, 18, length);
 
-        var ip = IPAddress.Parse(string.IsNullOrWhiteSpace(targetIp) ? _defaultTargetIp : targetIp);
+        var fallbackIp = _settingsService.Get().ArtNet.TargetIp ?? "255.255.255.255";
+        var ip = IPAddress.Parse(string.IsNullOrWhiteSpace(targetIp) ? fallbackIp : targetIp);
         await _udpClient.SendAsync(buffer, buffer.Length, new IPEndPoint(ip, ArtnetPort));
     }
 

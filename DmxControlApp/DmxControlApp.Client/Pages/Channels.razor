@@ -5,8 +5,22 @@
 
 <h1>DMX Channels</h1>
 
+<div class="row g-2 align-items-end mb-3">
+    <div class="col-auto">
+        <label class="form-label">Universe</label>
+        <input type="number" class="form-control" min="0" max="32767" @bind="universe" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label">Channels</label>
+        <input type="number" class="form-control" min="1" max="512" @bind="channelCount" />
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-outline-secondary" @onclick="LoadPatch">Load Patch</button>
+    </div>
+</div>
+
 <div class="row g-2">
-    @for (var i = 1; i <= 16; i++)
+    @for (var i = 1; i <= channelCount; i++)
     {
         <div class="col-6 col-sm-4 col-md-3 col-lg-2">
             <div class="card p-2 text-center">
@@ -22,6 +36,8 @@
 </div>
 
 @code {
+    private int universe = 0;
+    private int channelCount = 16;
     private byte[] channelValues = new byte[16];
 
     private void OnChannelChanged(int index, ChangeEventArgs e)
@@ -36,12 +52,22 @@
 
     private async Task SendFrame()
     {
-        var payload = new
-        {
-            universe = 0,
-            values = channelValues
-        };
+        var payload = new { universe, values = channelValues };
         await Http.PostAsJsonAsync("/api/artnet/send", payload);
     }
+
+    private async Task LoadPatch()
+    {
+        var state = await Http.GetFromJsonAsync<AppStateDto>("/api/state");
+        var patch = state?.Patches?.FirstOrDefault(p => p.Universe == universe);
+        if (patch != null)
+        {
+            channelCount = Math.Clamp(patch.ActiveChannels, 1, 512);
+            if (channelValues.Length != channelCount) channelValues = new byte[channelCount];
+        }
+    }
+
+    private sealed class AppStateDto { public List<PatchDto>? Patches { get; set; } }
+    private sealed class PatchDto { public int Universe { get; set; } public int ActiveChannels { get; set; } }
 }
 

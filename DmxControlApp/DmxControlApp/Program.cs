@@ -14,6 +14,7 @@ builder.Services.AddSingleton<IArtnetService, ArtnetService>();
 builder.Services.AddSingleton<IAiPresetService, AiPresetService>();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IAppSettingsService, AppSettingsService>();
+builder.Services.AddSingleton<IStateService, StateService>();
 
 var app = builder.Build();
 
@@ -82,5 +83,9 @@ app.MapPost("/api/settings", async ([FromBody] AppSettings settings, IAppSetting
     var updated = await svc.UpdateAsync(settings, ct);
     return Results.Ok(updated);
 });
+
+// State endpoints: scenes/patch
+app.MapGet("/api/state", (IStateService svc) => Results.Ok(svc.Get()));
+app.MapPost("/api/state", async ([FromBody] AppState state, IStateService svc, CancellationToken ct) => Results.Ok(await svc.SaveAsync(state, ct)));
 
 app.Run();

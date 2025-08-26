@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DmxControlApp.Client")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+21ed7e95b1f60b54dcac5dfc49e432e2e12c6cec")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8bbbb1c0aa48dc90bcf1e26fceeba207625772b9")]
 [assembly: System.Reflection.AssemblyProductAttribute("DmxControlApp.Client")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DmxControlApp.Client")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

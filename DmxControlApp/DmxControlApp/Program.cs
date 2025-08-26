@@ -3,6 +3,7 @@ using DmxControlApp.Components;
 using DmxControlApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using DmxControlApp.Models;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -87,5 +88,16 @@ app.MapPost("/api/settings", async ([FromBody] AppSettings settings, IAppSetting
 // State endpoints: scenes/patch
 app.MapGet("/api/state", (IStateService svc) => Results.Ok(svc.Get()));
 app.MapPost("/api/state", async ([FromBody] AppState state, IStateService svc, CancellationToken ct) => Results.Ok(await svc.SaveAsync(state, ct)));
+
+// Export/Import state as JSON
+app.MapGet("/api/state/export", (IStateService svc) => Results.File(Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(svc.Get())), contentType: "application/json", fileDownloadName: "state.json"));
+app.MapPost("/api/state/import", async (HttpRequest req, IStateService svc, CancellationToken ct) =>
+{
+    using var reader = new StreamReader(req.Body);
+    var json = await reader.ReadToEndAsync(ct);
+    var state = System.Text.Json.JsonSerializer.Deserialize<AppState>(json) ?? new AppState();
+    await svc.SaveAsync(state, ct);
+    return Results.Ok();
+});
 
 app.Run();

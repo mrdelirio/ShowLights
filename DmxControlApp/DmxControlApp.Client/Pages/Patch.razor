@@ -1,0 +1,80 @@
+@page "/patch"
+@rendermode InteractiveWebAssembly
+
+<PageTitle>Patch</PageTitle>
+
+<h1>Patch</h1>
+
+<div class="row g-2 align-items-end mb-3">
+    <div class="col-auto">
+        <label class="form-label">Universe</label>
+        <input type="number" class="form-control" min="0" max="32767" @bind="universe" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label">Active Channels</label>
+        <input type="number" class="form-control" min="1" max="512" @bind="activeChannels" />
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-outline-secondary" @onclick="Load">Load</button>
+        <button class="btn btn-primary" @onclick="Save">Save</button>
+    </div>
+</div>
+
+<div class="row g-2">
+    @for (var i = 0; i < activeChannels; i++)
+    {
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="input-group">
+                <span class="input-group-text">Ch @(@i+1)</span>
+                <input class="form-control" @bind="labels[i]" />
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private int universe = 0;
+    private int activeChannels = 32;
+    private string[] labels = new string[512];
+
+    [Inject] private HttpClient Http { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Array.Fill(labels, string.Empty);
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        var state = await Http.GetFromJsonAsync<AppStateDto>("/api/state");
+        var patch = state?.Patches?.FirstOrDefault(p => p.Universe == universe);
+        if (patch != null)
+        {
+            activeChannels = Math.Clamp(patch.ActiveChannels, 1, 512);
+            labels = patch.Labels ?? labels;
+        }
+    }
+
+    private async Task Save()
+    {
+        var state = await Http.GetFromJsonAsync<AppStateDto>("/api/state") ?? new AppStateDto();
+        var existing = state.Patches?.FirstOrDefault(p => p.Universe == universe);
+        if (existing == null)
+        {
+            existing = new PatchDto { Universe = universe, ActiveChannels = activeChannels, Labels = labels };
+            state.Patches ??= new List<PatchDto>();
+            state.Patches.Add(existing);
+        }
+        else
+        {
+            existing.ActiveChannels = activeChannels;
+            existing.Labels = labels;
+        }
+        await Http.PostAsJsonAsync("/api/state", state);
+    }
+
+    private sealed class AppStateDto { public List<PatchDto>? Patches { get; set; } }
+    private sealed class PatchDto { public int Universe { get; set; } public int ActiveChannels { get; set; } public string[]? Labels { get; set; } }
+}
+

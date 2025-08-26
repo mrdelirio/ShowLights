@@ -62,12 +62,17 @@
     </div>
 
     <button class="btn btn-primary" type="submit">Save</button>
+    <button class="btn btn-outline-secondary ms-2" type="button" @onclick="ExportState">Export JSON</button>
+    <label class="btn btn-outline-secondary ms-2">
+        Import JSON <input type="file" style="display:none" @onchange="OnImportFileChanged" />
+    </label>
 </EditForm>
 
 @code {
     private SettingsDto settings = new();
 
     [Inject] private HttpClient Http { get; set; } = default!;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
     private List<string> availableModels = new();
 
     protected override async Task OnInitializedAsync()
@@ -84,6 +89,29 @@
         {
             // no-op; in real app show toast
         }
+    }
+
+    private async Task ExportState()
+    {
+        var data = await Http.GetByteArrayAsync("/api/state/export");
+        var blobUrl = $"data:application/json;base64,{Convert.ToBase64String(data)}";
+        await JS.InvokeVoidAsync("eval", $"(() => {{ const a=document.createElement('a'); a.href='{blobUrl}'; a.download='state.json'; a.click(); }})()");
+    }
+
+    private async Task OnImportFileChanged(ChangeEventArgs e)
+    {
+        try
+        {
+            // Read file using JS interop
+            var filesJson = await JS.InvokeAsync<string>("eval", "(() => { const input = document.querySelector('input[type=\\'file\\']'); if (!input || !input.files || input.files.length===0) return ''; const f = input.files[0]; return new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(f); }); })()");
+            if (string.IsNullOrWhiteSpace(filesJson)) return;
+            var base64 = filesJson.Split(',').Last();
+            var bytes = Convert.FromBase64String(base64);
+            using var content = new ByteArrayContent(bytes);
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+            await Http.PostAsync("/api/state/import", content);
+        }
+        catch { }
     }
 
     private async Task LoadOllamaModels()

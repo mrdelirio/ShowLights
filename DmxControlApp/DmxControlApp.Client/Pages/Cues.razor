@@ -106,6 +106,11 @@
         isPlaying = true;
         status = "Playing";
         currentIndex = Math.Max(currentIndex, 0);
+        if (currentFrame == null || currentFrame.Length == 0)
+        {
+            var firstLen = cues[0].Values.Length;
+            currentFrame = new byte[firstLen];
+        }
         while (isPlaying)
         {
             var cue = cues[currentIndex];
@@ -143,21 +148,32 @@
         if (snapToCue || fadeMs <= 0)
         {
             await Http.PostAsJsonAsync("/api/artnet/send", new { universe = cue.Universe, values = cue.Values });
+            currentFrame = cue.Values.ToArray();
         }
         else
         {
             var steps = Math.Max(1, fadeMs / 50);
-            var current = new byte[cue.Values.Length];
+            var target = cue.Values;
+            var maxLen = Math.Max(currentFrame?.Length ?? 0, target.Length);
+            var from = new byte[maxLen];
+            var to = new byte[maxLen];
+            for (int i = 0; i < maxLen; i++)
+            {
+                from[i] = (byte)(i < (currentFrame?.Length ?? 0) ? currentFrame![i] : 0);
+                to[i] = (byte)(i < target.Length ? target[i] : 0);
+            }
+            var working = new byte[maxLen];
             for (int s = 1; s <= steps; s++)
             {
-                for (int i = 0; i < cue.Values.Length; i++)
+                for (int i = 0; i < maxLen; i++)
                 {
-                    current[i] = (byte)((cue.Values[i] * s) / steps);
+                    working[i] = (byte)(from[i] + ((to[i] - from[i]) * s) / steps);
                 }
-                await Http.PostAsJsonAsync("/api/artnet/send", new { universe = cue.Universe, values = current });
+                await Http.PostAsJsonAsync("/api/artnet/send", new { universe = cue.Universe, values = working });
                 await Task.Delay(50);
                 if (!isPlaying) return;
             }
+            currentFrame = to;
         }
         if (holdMs > 0)
         {
@@ -171,7 +187,29 @@
         }
     }
 
-    private sealed class AppStateDto { public List<SceneDto> Scenes { get; set; } = new(); }
+    private async Task SaveCues()
+    {
+        var state = await Http.GetFromJsonAsync<AppStateDto>("/api/state") ?? new AppStateDto();
+        state.Cues = cues.Select(c => new CueDto { Name = c.Name, Universe = c.Universe, Values = c.Values, FadeMs = c.FadeMs, HoldMs = c.HoldMs }).ToList();
+        await Http.PostAsJsonAsync("/api/state", state);
+    }
+
+    private async Task LoadCues()
+    {
+        var state = await Http.GetFromJsonAsync<AppStateDto>("/api/state") ?? new AppStateDto();
+        cues = state.Cues.Select(c => new Cue(c.Name, c.Universe, c.Values ?? Array.Empty<byte>(), c.FadeMs, c.HoldMs)).ToList();
+        var first = cues.FirstOrDefault();
+        if (first != null)
+        {
+            universe = first.Universe;
+            channelCount = first.Values.Length;
+        }
+    }
+
+    private byte[]? currentFrame;
+
+    private sealed class AppStateDto { public List<SceneDto> Scenes { get; set; } = new(); public List<CueDto> Cues { get; set; } = new(); }
     private sealed class SceneDto { public string Name { get; set; } = string.Empty; public int Universe { get; set; } public byte[]? Values { get; set; } }
+    private sealed class CueDto { public string Name { get; set; } = string.Empty; public int Universe { get; set; } public byte[]? Values { get; set; } public int FadeMs { get; set; } public int HoldMs { get; set; } }
 }
 

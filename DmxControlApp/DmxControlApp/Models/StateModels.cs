@@ -18,5 +18,15 @@ public sealed class AppState
 {
     public List<SceneModel> Scenes { get; set; } = new();
     public List<PatchModel> Patches { get; set; } = new();
+    public List<CueModel> Cues { get; set; } = new();
+}
+
+public sealed class CueModel
+{
+    public string Name { get; set; } = string.Empty;
+    public int Universe { get; set; }
+    public byte[] Values { get; set; } = Array.Empty<byte>();
+    public int FadeMs { get; set; }
+    public int HoldMs { get; set; }
 }
 

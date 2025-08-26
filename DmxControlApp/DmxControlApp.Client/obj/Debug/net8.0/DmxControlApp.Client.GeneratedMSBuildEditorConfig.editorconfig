@@ -42,6 +42,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvTGl2ZS5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
+[/workspace/DmxControlApp/DmxControlApp.Client/Pages/Patch.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvUGF0Y2gucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
 [/workspace/DmxControlApp/DmxControlApp.Client/Pages/Scenes.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvU2NlbmVzLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 

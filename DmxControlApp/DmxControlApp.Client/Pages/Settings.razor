@@ -69,7 +69,7 @@
 </EditForm>
 
 @code {
-    private SettingsDto settings = new();
+    private AppSettings settings = new();
 
     [Inject] private HttpClient Http { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
@@ -77,8 +77,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var res = await Http.GetFromJsonAsync<SettingsDto>("/api/settings")
-                 ?? new SettingsDto();
+        var res = await Http.GetFromJsonAsync<AppSettings>("/api/settings")
+                 ?? new AppSettings();
         settings = res;
     }
 
@@ -133,21 +133,38 @@
         if (!string.IsNullOrWhiteSpace(val)) settings.AI.Ollama.Model = val;
     }
 
-    private sealed class SettingsDto
+    // Models for API communication
+    private sealed class AppSettings
     {
         public ArtNetSettings ArtNet { get; set; } = new();
         public AISettings AI { get; set; } = new();
     }
 
-    private sealed class ArtNetSettings { public string? TargetIp { get; set; } }
+    private sealed class ArtNetSettings 
+    { 
+        public string TargetIp { get; set; } = "255.255.255.255"; 
+    }
+
     private sealed class AISettings
     {
-        public string? Provider { get; set; }
+        public string Provider { get; set; } = string.Empty;
         public OpenAISettings OpenAI { get; set; } = new();
         public OllamaSettings Ollama { get; set; } = new();
     }
-    private sealed class OpenAISettings { public string? BaseUrl { get; set; } public string? Model { get; set; } public string? ApiKey { get; set; } }
-    private sealed class OllamaSettings { public string? BaseUrl { get; set; } public string? Model { get; set; } }
+
+    private sealed class OpenAISettings 
+    { 
+        public string BaseUrl { get; set; } = "https://api.openai.com/v1"; 
+        public string Model { get; set; } = "gpt-4o-mini"; 
+        public string ApiKey { get; set; } = string.Empty; 
+    }
+
+    private sealed class OllamaSettings 
+    { 
+        public string BaseUrl { get; set; } = "http://localhost:11434"; 
+        public string Model { get; set; } = "llama3.1"; 
+    }
+
     private sealed class OllamaTagsResponse { public List<OllamaModel>? models { get; set; } }
     private sealed class OllamaModel { public string? name { get; set; } public string? model { get; set; } }
 }

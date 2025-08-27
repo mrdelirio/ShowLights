@@ -1,0 +1,61 @@
+@page "/bluetooth"
+@rendermode InteractiveWebAssembly
+
+<PageTitle>Bluetooth</PageTitle>
+
+<h1>Bluetooth LE (stub)</h1>
+
+<div class="d-flex gap-2 align-items-center">
+    <button class="btn btn-primary" @onclick="Scan">Scan (Web Bluetooth)</button>
+    <button class="btn btn-secondary" @onclick="Connect" disabled="@(selectedDeviceId is null)">Connect</button>
+</div>
+
+<ul class="list-group mt-3">
+    @foreach (var d in devices)
+    {
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>@d.Name (@d.Id)</span>
+            <button class="btn btn-sm btn-outline-primary" @onclick="() => Select(d.Id)">Select</button>
+        </li>
+    }
+</ul>
+
+@code {
+    private List<Device> devices = new();
+    private string? selectedDeviceId;
+
+    [Inject] private HttpClient Http { get; set; } = default!;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private async Task Scan()
+    {
+        try
+        {
+            var d = await JS.InvokeAsync<Device>("dmxBle.requestDevice");
+            devices = new List<Device> { d };
+        }
+        catch
+        {
+            devices = new();
+        }
+    }
+
+    private void Select(string id) => selectedDeviceId = id;
+
+    private async Task Connect()
+    {
+        if (selectedDeviceId is null) return;
+        try
+        {
+            await JS.InvokeVoidAsync("dmxBle.connect");
+        }
+        catch { }
+    }
+
+    private sealed class Device
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+    }
+}
+

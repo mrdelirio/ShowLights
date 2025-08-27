@@ -1,0 +1,46 @@
+@page "/live"
+@rendermode InteractiveWebAssembly
+
+<PageTitle>Live</PageTitle>
+
+<h1>Live</h1>
+
+<p>Audio reactive mode (stub)</p>
+
+<div class="d-flex gap-2 align-items-center">
+    <button class="btn btn-secondary" @onclick="ToggleMic">@((isListening ? "Stop" : "Start")) Mic</button>
+    <span>Level: @Math.Round(currentLevel, 2)</span>
+</div>
+
+<canvas id="spectrum" width="600" height="120" class="mt-3 border"></canvas>
+
+@code {
+    private bool isListening;
+    private double currentLevel;
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+    [Inject] private HttpClient Http { get; set; } = default!;
+
+    private async Task ToggleMic()
+    {
+        isListening = !isListening;
+        if (isListening)
+        {
+            await JS.InvokeVoidAsync("dmxAudio.start", DotNetObjectReference.Create(this), "spectrum");
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("dmxAudio.stop");
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnAudioLevel(double level)
+    {
+        currentLevel = level;
+        var value = (byte)Math.Clamp(level * 255.0, 0, 255);
+        await Http.PostAsJsonAsync("/api/artnet/send", new { universe = 0, values = Enumerable.Repeat(value, 16).ToArray() });
+        StateHasChanged();
+    }
+}
+

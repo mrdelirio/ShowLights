@@ -1,0 +1,215 @@
+@page "/cues"
+@rendermode InteractiveWebAssembly
+
+<PageTitle>Cues</PageTitle>
+
+<h1>Cue List</h1>
+
+<div class="mb-3">
+    <div class="input-group">
+        <input class="form-control" placeholder="Cue name" @bind="newCueName" />
+        <input class="form-control" type="number" placeholder="Fade ms" @bind="newCueFadeMs" />
+        <input class="form-control" type="number" placeholder="Hold ms" @bind="newCueHoldMs" />
+        <button class="btn btn-success" @onclick="AddCue">Add Cue</button>
+    </div>
+    <small class="text-muted">Usa scene salvate in Scenes per creare cue; questo è uno stub.</small>
+    <div class="form-text">Universe: @universe, Channels: @channelCount</div>
+    <div class="mt-2">
+        <button class="btn btn-primary me-2" @onclick="Play">Play</button>
+        <button class="btn btn-secondary me-2" @onclick="Stop">Stop</button>
+        <span>Index: @currentIndex</span>
+    </div>
+    <div class="form-check mt-2">
+        <input id="loop" class="form-check-input" type="checkbox" @bind="loop" />
+        <label class="form-check-label" for="loop">Loop</label>
+    </div>
+    <div class="form-check">
+        <input id="crossfade" class="form-check-input" type="checkbox" @bind="crossfade" />
+        <label class="form-check-label" for="crossfade">Crossfade</label>
+    </div>
+    <div class="form-check">
+        <input id="snap" class="form-check-input" type="checkbox" @bind="snapToCue" />
+        <label class="form-check-label" for="snap">Snap to cue</label>
+    </div>
+    <div class="mt-2">
+        <label>Speed</label>
+        <input type="range" min="0.1" max="2" step="0.1" @bind="speed" /> x
+    </div>
+    <div class="mt-2">
+        <button class="btn btn-outline-primary me-2" @onclick="Next">Next</button>
+        <button class="btn btn-outline-primary" @onclick="Prev">Prev</button>
+    </div>
+    <div class="mt-2">Status: @status</div>
+</div>
+
+<ul class="list-group">
+    @for (var i = 0; i < cues.Count; i++)
+    {
+        var c = cues[i];
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>@c.Name (fade @c.FadeMs ms, hold @c.HoldMs ms)</span>
+            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveCue(i)">Remove</button>
+        </li>
+    }
+</ul>
+
+@code {
+    private sealed record Cue(string Name, int Universe, byte[] Values, int FadeMs, int HoldMs);
+
+    private int universe = 0;
+    private int channelCount = 16;
+    private string newCueName = string.Empty;
+    private int newCueFadeMs = 500;
+    private int newCueHoldMs = 1000;
+    private List<Cue> cues = new();
+    private int currentIndex = -1;
+    private bool isPlaying;
+    private string status = "Idle";
+    private bool loop;
+    private bool crossfade = true;
+    private bool snapToCue = false;
+    private double speed = 1.0;
+
+    [Inject] private HttpClient Http { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await Http.GetFromJsonAsync<AppStateDto>("http://localhost:5178/api/state");
+        var scenes = state?.Scenes ?? new();
+        var first = scenes.FirstOrDefault();
+        if (first != null)
+        {
+            universe = first.Universe;
+            channelCount = first.Values?.Length ?? 16;
+        }
+        foreach (var s in scenes)
+        {
+            cues.Add(new Cue(s.Name, s.Universe, s.Values ?? Array.Empty<byte>(), 500, 1000));
+        }
+    }
+
+    private void AddCue()
+    {
+        var values = new byte[channelCount];
+        cues.Add(new Cue(string.IsNullOrWhiteSpace(newCueName) ? $"Cue {cues.Count + 1}" : newCueName.Trim(), universe, values, newCueFadeMs, newCueHoldMs));
+    }
+
+    private void RemoveCue(int index)
+    {
+        if (index < 0 || index >= cues.Count) return;
+        cues.RemoveAt(index);
+    }
+
+    private async Task Play()
+    {
+        if (!cues.Any()) return;
+        isPlaying = true;
+        status = "Playing";
+        currentIndex = Math.Max(currentIndex, 0);
+        if (currentFrame == null || currentFrame.Length == 0)
+        {
+            var firstLen = cues[0].Values.Length;
+            currentFrame = new byte[firstLen];
+        }
+        while (isPlaying)
+        {
+            var cue = cues[currentIndex];
+            await PlayCue(cue);
+            currentIndex++;
+            if (currentIndex >= cues.Count)
+            {
+                if (loop) currentIndex = 0; else break;
+            }
+        }
+        isPlaying = false;
+        status = "Stopped";
+        StateHasChanged();
+    }
+
+    private void Stop()
+    {
+        isPlaying = false;
+    }
+
+    private void Next()
+    {
+        currentIndex = Math.Min(currentIndex + 1, cues.Count - 1);
+    }
+
+    private void Prev()
+    {
+        currentIndex = Math.Max(currentIndex - 1, 0);
+    }
+
+    private async Task PlayCue(Cue cue)
+    {
+        var fadeMs = (int)(cue.FadeMs / Math.Max(0.1, speed));
+        var holdMs = (int)(cue.HoldMs / Math.Max(0.1, speed));
+        if (snapToCue || fadeMs <= 0)
+        {
+            await Http.PostAsJsonAsync("http://localhost:5178/api/artnet/send", new { universe = cue.Universe, values = cue.Values });
+            currentFrame = cue.Values.ToArray();
+        }
+        else
+        {
+            var steps = Math.Max(1, fadeMs / 50);
+            var target = cue.Values;
+            var maxLen = Math.Max(currentFrame?.Length ?? 0, target.Length);
+            var from = new byte[maxLen];
+            var to = new byte[maxLen];
+            for (int i = 0; i < maxLen; i++)
+            {
+                from[i] = (byte)(i < (currentFrame?.Length ?? 0) ? currentFrame![i] : 0);
+                to[i] = (byte)(i < target.Length ? target[i] : 0);
+            }
+            var working = new byte[maxLen];
+            for (int s = 1; s <= steps; s++)
+            {
+                for (int i = 0; i < maxLen; i++)
+                {
+                    working[i] = (byte)(from[i] + ((to[i] - from[i]) * s) / steps);
+                }
+                await Http.PostAsJsonAsync("http://localhost:5178/api/artnet/send", new { universe = cue.Universe, values = working });
+                await Task.Delay(50);
+                if (!isPlaying) return;
+            }
+            currentFrame = to;
+        }
+        if (holdMs > 0)
+        {
+            var delay = Math.Max(0, holdMs);
+            var elapsed = 0;
+            while (elapsed < delay && isPlaying)
+            {
+                await Task.Delay(50);
+                elapsed += 50;
+            }
+        }
+    }
+
+    private async Task SaveCues()
+    {
+        var state = await Http.GetFromJsonAsync<AppStateDto>("http://localhost:5178/api/state") ?? new AppStateDto();
+        state.Cues = cues.Select(c => new CueDto { Name = c.Name, Universe = c.Universe, Values = c.Values, FadeMs = c.FadeMs, HoldMs = c.HoldMs }).ToList();
+        await Http.PostAsJsonAsync("http://localhost:5178/api/state", state);
+    }
+
+    private async Task LoadCues()
+    {
+        var state = await Http.GetFromJsonAsync<AppStateDto>("http://localhost:5178/api/state") ?? new AppStateDto();
+        cues = state.Cues.Select(c => new Cue(c.Name, c.Universe, c.Values ?? Array.Empty<byte>(), c.FadeMs, c.HoldMs)).ToList();
+        var first = cues.FirstOrDefault();
+        if (first != null)
+        {
+            universe = first.Universe;
+            channelCount = first.Values.Length;
+        }
+    }
+
+    private byte[]? currentFrame;
+
+    private sealed class AppStateDto { public List<SceneDto> Scenes { get; set; } = new(); public List<CueDto> Cues { get; set; } = new(); }
+    private sealed class SceneDto { public string Name { get; set; } = string.Empty; public int Universe { get; set; } public byte[]? Values { get; set; } }
+    private sealed class CueDto { public string Name { get; set; } = string.Empty; public int Universe { get; set; } public byte[]? Values { get; set; } public int FadeMs { get; set; } public int HoldMs { get; set; } }
+}
+

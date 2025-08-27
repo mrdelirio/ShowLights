@@ -1,0 +1,182 @@
+@page "/settings"
+@rendermode InteractiveWebAssembly
+
+<PageTitle>Settings</PageTitle>
+
+<h1>Settings</h1>
+
+<EditForm Model="settings" OnValidSubmit="Save">
+    <DataAnnotationsValidator />
+    <div class="card p-3 mb-3">
+        <h5>Art-Net</h5>
+        <div class="mb-3">
+            <label class="form-label">Target IP</label>
+            <InputText class="form-control" @bind-Value="settings.ArtNet.TargetIp" />
+        </div>
+    </div>
+
+    <div class="card p-3 mb-3">
+        <h5>AI</h5>
+        <div class="mb-3">
+            <label class="form-label">Provider</label>
+            <InputSelect class="form-select" @bind-Value="settings.AI.Provider">
+                <option value="">None</option>
+                <option value="OpenAI">OpenAI</option>
+                <option value="Ollama">Ollama</option>
+            </InputSelect>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">OpenAI BaseUrl</label>
+            <InputText class="form-control" @bind-Value="settings.AI.OpenAI.BaseUrl" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">OpenAI Model</label>
+            <InputText class="form-control" @bind-Value="settings.AI.OpenAI.Model" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">OpenAI API Key</label>
+            <InputText class="form-control" type="password" @bind-Value="settings.AI.OpenAI.ApiKey" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Ollama BaseUrl</label>
+            <InputText class="form-control" @bind-Value="settings.AI.Ollama.BaseUrl" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Ollama Model</label>
+            <div class="input-group">
+                <InputText class="form-control" @bind-Value="settings.AI.Ollama.Model" />
+                <button type="button" class="btn btn-outline-secondary" @onclick="LoadOllamaModels">Load Models</button>
+            </div>
+            <div class="mt-2">
+                <select class="form-select" @onchange="OnModelChanged">
+                    <option value="">-- Select a model --</option>
+                    @foreach (var m in availableModels)
+                    {
+                        <option value="@m">@m</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn btn-primary" type="submit">Save</button>
+    <button class="btn btn-outline-secondary ms-2" type="button" @onclick="ExportState">Export JSON</button>
+    <label class="btn btn-outline-secondary ms-2">
+        Import JSON <input type="file" style="display:none" @onchange="OnImportFileChanged" />
+    </label>
+</EditForm>
+
+@code {
+    private AppSettings settings = new();
+
+    [Inject] private HttpClient Http { get; set; } = default!;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+    private List<string> availableModels = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var res = await Http.GetFromJsonAsync<AppSettings>("http://localhost:5178/api/settings")
+                 ?? new AppSettings();
+        settings = res;
+    }
+
+    private async Task Save()
+    {
+        var res = await Http.PostAsJsonAsync("http://localhost:5178/api/settings", settings);
+        if (res.IsSuccessStatusCode)
+        {
+            // no-op; in real app show toast
+        }
+    }
+
+    private async Task ExportState()
+    {
+        var data = await Http.GetByteArrayAsync("http://localhost:5178/api/state/export");
+        var blobUrl = $"data:application/json;base64,{Convert.ToBase64String(data)}";
+        await JS.InvokeVoidAsync("eval", $"(() => {{ const a=document.createElement('a'); a.href='{blobUrl}'; a.download='state.json'; a.click(); }})()");
+    }
+
+    private async Task OnImportFileChanged(ChangeEventArgs e)
+    {
+        try
+        {
+            // Read file using JS interop
+            var filesJson = await JS.InvokeAsync<string>("eval", "(() => { const input = document.querySelector('input[type=\\'file\\']'); if (!input || !input.files || input.files.length===0) return ''; const f = input.files[0]; return new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(f); }); })()");
+            if (string.IsNullOrWhiteSpace(filesJson)) return;
+            var base64 = filesJson.Split(',').Last();
+            var bytes = Convert.FromBase64String(base64);
+            using var content = new ByteArrayContent(bytes);
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+            await Http.PostAsync("http://localhost:5178/api/state/import", content);
+        }
+        catch { }
+    }
+
+    private async Task LoadOllamaModels()
+    {
+        try
+        {
+            var res = await Http.GetFromJsonAsync<OllamaTagsResponse>("http://localhost:5178/api/ai/ollama/models");
+            availableModels = res?.models?.Select(m => m.model ?? string.Empty).Where(s => !string.IsNullOrWhiteSpace(s)).ToList() ?? new();
+        }
+        catch
+        {
+            availableModels = new();
+        }
+    }
+
+    private void OnModelChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        if (!string.IsNullOrWhiteSpace(val)) settings.AI.Ollama.Model = val;
+    }
+
+    // Models for API communication
+    private sealed class AppSettings
+    {
+        [JsonPropertyName("artNet")]
+        public ArtNetSettings ArtNet { get; set; } = new();
+        [JsonPropertyName("ai")]
+        public AISettings AI { get; set; } = new();
+    }
+
+    private sealed class ArtNetSettings 
+    { 
+        [JsonPropertyName("targetIp")]
+        public string TargetIp { get; set; } = "255.255.255.255"; 
+    }
+
+    private sealed class AISettings
+    {
+        [JsonPropertyName("provider")]
+        public string Provider { get; set; } = string.Empty;
+        [JsonPropertyName("openAI")]
+        public OpenAISettings OpenAI { get; set; } = new();
+        [JsonPropertyName("ollama")]
+        public OllamaSettings Ollama { get; set; } = new();
+    }
+
+    private sealed class OpenAISettings 
+    { 
+        [JsonPropertyName("baseUrl")]
+        public string BaseUrl { get; set; } = "https://api.openai.com/v1"; 
+        [JsonPropertyName("model")]
+        public string Model { get; set; } = "gpt-4o-mini"; 
+        [JsonPropertyName("apiKey")]
+        public string ApiKey { get; set; } = string.Empty; 
+    }
+
+    private sealed class OllamaSettings 
+    { 
+        [JsonPropertyName("baseUrl")]
+        public string BaseUrl { get; set; } = "http://localhost:11434"; 
+        [JsonPropertyName("model")]
+        public string Model { get; set; } = "llama3.1"; 
+    }
+
+    private sealed class OllamaTagsResponse { public List<OllamaModel>? models { get; set; } }
+    private sealed class OllamaModel { public string? name { get; set; } public string? model { get; set; } }
+}
+

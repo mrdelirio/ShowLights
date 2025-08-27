@@ -1,0 +1,98 @@
+@page "/scenes"
+@rendermode InteractiveWebAssembly
+
+<PageTitle>Scenes</PageTitle>
+
+<h1>Scenes</h1>
+
+<div class="row g-2 align-items-end mb-3">
+    <div class="col-auto">
+        <label class="form-label">Universe</label>
+        <input type="number" class="form-control" min="0" max="32767" @bind="universe" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label">Channels</label>
+        <input type="number" class="form-control" min="1" max="512" @bind="channelCount" />
+    </div>
+</div>
+
+<div class="mb-3">
+    <input class="form-control" placeholder="Scene name" @bind="newSceneName" />
+    <button class="btn btn-success mt-2" @onclick="SaveScene">Save Scene</button>
+    <div class="input-group mt-3">
+        <input class="form-control" placeholder="AI prompt (es. warm wash, strobo)" @bind="aiPrompt" />
+        <button class="btn btn-outline-primary" @onclick="GenerateAi">Generate with AI</button>
+    </div>
+</div>
+
+<ul class="list-group">
+    @foreach (var s in scenes)
+    {
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>@s.Name</span>
+            <div>
+                <button class="btn btn-primary btn-sm me-2" @onclick="() => ApplyScene(s)">Apply</button>
+                <button class="btn btn-danger btn-sm" @onclick="() => DeleteScene(s)">Delete</button>
+            </div>
+        </li>
+    }
+}</ul>
+
+@code {
+    private string newSceneName = string.Empty;
+    private string aiPrompt = string.Empty;
+
+    private record Scene(string Name, int Universe, byte[] Values);
+
+    private List<Scene> scenes = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var stored = await localStorage.GetItemAsync<List<Scene>>("scenes");
+        if (stored != null) scenes = stored;
+    }
+
+    private async Task SaveScene()
+    {
+        if (string.IsNullOrWhiteSpace(newSceneName)) return;
+        var random = new Random();
+        var values = Enumerable.Range(0, channelCount).Select(_ => (byte)random.Next(0, 256)).ToArray();
+        scenes.Add(new Scene(newSceneName.Trim(), universe, values));
+        await localStorage.SetItemAsync("scenes", scenes);
+        newSceneName = string.Empty;
+    }
+
+    private async Task ApplyScene(Scene scene)
+    {
+        await Http.PostAsJsonAsync("http://localhost:5178/api/artnet/send", new { universe = scene.Universe, values = scene.Values });
+    }
+
+    private async Task GenerateAi()
+    {
+        var res = await Http.PostAsJsonAsync("http://localhost:5178/api/ai/preset", new { prompt = aiPrompt, channels = channelCount });
+        if (res.IsSuccessStatusCode)
+        {
+            var payload = await res.Content.ReadFromJsonAsync<AiPresetDto>();
+            if (payload?.Values != null)
+            {
+                var name = string.IsNullOrWhiteSpace(aiPrompt) ? "AI Preset" : $"AI: {aiPrompt}";
+                scenes.Add(new Scene(name, universe, payload.Values));
+                await localStorage.SetItemAsync("scenes", scenes);
+            }
+        }
+    }
+
+    private async Task DeleteScene(Scene scene)
+    {
+        scenes.Remove(scene);
+        await localStorage.SetItemAsync("scenes", scenes);
+    }
+
+    private int universe = 0;
+    private int channelCount = 16;
+    [Inject] private HttpClient Http { get; set; } = default!;
+    [Inject] private ILocalStorage localStorage { get; set; } = default!;
+
+    private sealed class AiPresetDto { public byte[]? Values { get; set; } }
+}
+

@@ -77,14 +77,14 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var res = await Http.GetFromJsonAsync<AppSettings>("/api/settings")
+        var res = await Http.GetFromJsonAsync<AppSettings>("http://localhost:5178/api/settings")
                  ?? new AppSettings();
         settings = res;
     }
 
     private async Task Save()
     {
-        var res = await Http.PostAsJsonAsync("/api/settings", settings);
+        var res = await Http.PostAsJsonAsync("http://localhost:5178/api/settings", settings);
         if (res.IsSuccessStatusCode)
         {
             // no-op; in real app show toast
@@ -93,7 +93,7 @@
 
     private async Task ExportState()
     {
-        var data = await Http.GetByteArrayAsync("/api/state/export");
+        var data = await Http.GetByteArrayAsync("http://localhost:5178/api/state/export");
         var blobUrl = $"data:application/json;base64,{Convert.ToBase64String(data)}";
         await JS.InvokeVoidAsync("eval", $"(() => {{ const a=document.createElement('a'); a.href='{blobUrl}'; a.download='state.json'; a.click(); }})()");
     }
@@ -109,7 +109,7 @@
             var bytes = Convert.FromBase64String(base64);
             using var content = new ByteArrayContent(bytes);
             content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-            await Http.PostAsync("/api/state/import", content);
+            await Http.PostAsync("http://localhost:5178/api/state/import", content);
         }
         catch { }
     }
@@ -118,7 +118,7 @@
     {
         try
         {
-            var res = await Http.GetFromJsonAsync<OllamaTagsResponse>("/api/ai/ollama/models");
+            var res = await Http.GetFromJsonAsync<OllamaTagsResponse>("http://localhost:5178/api/ai/ollama/models");
             availableModels = res?.models?.Select(m => m.model ?? string.Empty).Where(s => !string.IsNullOrWhiteSpace(s)).ToList() ?? new();
         }
         catch
@@ -136,32 +136,43 @@
     // Models for API communication
     private sealed class AppSettings
     {
+        [JsonPropertyName("artNet")]
         public ArtNetSettings ArtNet { get; set; } = new();
+        [JsonPropertyName("ai")]
         public AISettings AI { get; set; } = new();
     }
 
     private sealed class ArtNetSettings 
     { 
+        [JsonPropertyName("targetIp")]
         public string TargetIp { get; set; } = "255.255.255.255"; 
     }
 
     private sealed class AISettings
     {
+        [JsonPropertyName("provider")]
         public string Provider { get; set; } = string.Empty;
+        [JsonPropertyName("openAI")]
         public OpenAISettings OpenAI { get; set; } = new();
+        [JsonPropertyName("ollama")]
         public OllamaSettings Ollama { get; set; } = new();
     }
 
     private sealed class OpenAISettings 
     { 
+        [JsonPropertyName("baseUrl")]
         public string BaseUrl { get; set; } = "https://api.openai.com/v1"; 
+        [JsonPropertyName("model")]
         public string Model { get; set; } = "gpt-4o-mini"; 
+        [JsonPropertyName("apiKey")]
         public string ApiKey { get; set; } = string.Empty; 
     }
 
     private sealed class OllamaSettings 
     { 
+        [JsonPropertyName("baseUrl")]
         public string BaseUrl { get; set; } = "http://localhost:11434"; 
+        [JsonPropertyName("model")]
         public string Model { get; set; } = "llama3.1"; 
     }
 

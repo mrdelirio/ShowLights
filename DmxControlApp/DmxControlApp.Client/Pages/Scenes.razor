@@ -46,30 +46,30 @@
 
     private List<Scene> scenes = new();
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        var stored = localStorage.GetItem<List<Scene>>("scenes");
+        var stored = await localStorage.GetItemAsync<List<Scene>>("scenes");
         if (stored != null) scenes = stored;
     }
 
-    private void SaveScene()
+    private async Task SaveScene()
     {
         if (string.IsNullOrWhiteSpace(newSceneName)) return;
         var random = new Random();
         var values = Enumerable.Range(0, channelCount).Select(_ => (byte)random.Next(0, 256)).ToArray();
         scenes.Add(new Scene(newSceneName.Trim(), universe, values));
-        localStorage.SetItem("scenes", scenes);
+        await localStorage.SetItemAsync("scenes", scenes);
         newSceneName = string.Empty;
     }
 
     private async Task ApplyScene(Scene scene)
     {
-        await Http.PostAsJsonAsync("/api/artnet/send", new { universe = scene.Universe, values = scene.Values });
+        await Http.PostAsJsonAsync("http://localhost:5178/api/artnet/send", new { universe = scene.Universe, values = scene.Values });
     }
 
     private async Task GenerateAi()
     {
-        var res = await Http.PostAsJsonAsync("/api/ai/preset", new { prompt = aiPrompt, channels = channelCount });
+        var res = await Http.PostAsJsonAsync("http://localhost:5178/api/ai/preset", new { prompt = aiPrompt, channels = channelCount });
         if (res.IsSuccessStatusCode)
         {
             var payload = await res.Content.ReadFromJsonAsync<AiPresetDto>();
@@ -77,15 +77,15 @@
             {
                 var name = string.IsNullOrWhiteSpace(aiPrompt) ? "AI Preset" : $"AI: {aiPrompt}";
                 scenes.Add(new Scene(name, universe, payload.Values));
-                localStorage.SetItem("scenes", scenes);
+                await localStorage.SetItemAsync("scenes", scenes);
             }
         }
     }
 
-    private void DeleteScene(Scene scene)
+    private async Task DeleteScene(Scene scene)
     {
         scenes.Remove(scene);
-        localStorage.SetItem("scenes", scenes);
+        await localStorage.SetItemAsync("scenes", scenes);
     }
 
     private int universe = 0;

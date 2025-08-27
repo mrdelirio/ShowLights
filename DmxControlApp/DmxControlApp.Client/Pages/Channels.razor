@@ -12,7 +12,7 @@
     </div>
     <div class="col-auto">
         <label class="form-label">Channels</label>
-        <input type="number" class="form-control" min="1" max="512" @bind="channelCount" />
+        <input type="number" class="form-control" min="1" max="512" @bind="channelCount" @bind:event="oninput" @onchange="OnChannelCountChanged" />
     </div>
     <div class="col-auto">
         <button class="btn btn-outline-secondary" @onclick="LoadPatch">Load Patch</button>
@@ -42,9 +42,20 @@
 
     private void OnChannelChanged(int index, ChangeEventArgs e)
     {
-        if (byte.TryParse(Convert.ToString(e.Value), out var v))
+        if (index >= 0 && index < channelValues.Length && byte.TryParse(Convert.ToString(e.Value), out var v))
         {
             channelValues[index] = v;
+        }
+    }
+
+    private void OnChannelCountChanged()
+    {
+        if (channelCount > 0 && channelCount <= 512)
+        {
+            var newValues = new byte[channelCount];
+            var copyLength = Math.Min(channelValues.Length, channelCount);
+            Array.Copy(channelValues, newValues, copyLength);
+            channelValues = newValues;
         }
     }
 
@@ -53,17 +64,17 @@
     private async Task SendFrame()
     {
         var payload = new { universe, values = channelValues };
-        await Http.PostAsJsonAsync("/api/artnet/send", payload);
+        await Http.PostAsJsonAsync("http://localhost:5178/api/artnet/send", payload);
     }
 
     private async Task LoadPatch()
     {
-        var state = await Http.GetFromJsonAsync<AppStateDto>("/api/state");
+        var state = await Http.GetFromJsonAsync<AppStateDto>("http://localhost:5178/api/state");
         var patch = state?.Patches?.FirstOrDefault(p => p.Universe == universe);
         if (patch != null)
         {
             channelCount = Math.Clamp(patch.ActiveChannels, 1, 512);
-            if (channelValues.Length != channelCount) channelValues = new byte[channelCount];
+            OnChannelCountChanged();
         }
     }
 

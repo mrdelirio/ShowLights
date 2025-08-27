@@ -16,6 +16,7 @@ builder.Services.AddSingleton<IAiPresetService, AiPresetService>();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IAppSettingsService, AppSettingsService>();
 builder.Services.AddSingleton<IStateService, StateService>();
+builder.Services.AddScoped<DmxControlApp.Client.Services.ILocalStorage, LocalStorageStub>();
 
 var app = builder.Build();
 

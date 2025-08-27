@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace DmxControlApp.Services;
 
@@ -139,26 +140,35 @@ public sealed class AppSettings
 
 public sealed class ArtNetSettings
 {
+    [JsonPropertyName("targetIp")]
     public string TargetIp { get; set; } = "255.255.255.255";
 }
 
 public sealed class AISettings
 {
+    [JsonPropertyName("provider")]
     public string Provider { get; set; } = string.Empty; // None | OpenAI | Ollama
+    [JsonPropertyName("openAI")]
     public OpenAISettings OpenAI { get; set; } = new OpenAISettings();
+    [JsonPropertyName("ollama")]
     public OllamaSettings Ollama { get; set; } = new OllamaSettings();
 }
 
 public sealed class OpenAISettings
 {
+    [JsonPropertyName("baseUrl")]
     public string BaseUrl { get; set; } = "https://api.openai.com/v1";
+    [JsonPropertyName("model")]
     public string Model { get; set; } = "gpt-4o-mini";
+    [JsonPropertyName("apiKey")]
     public string ApiKey { get; set; } = string.Empty;
 }
 
 public sealed class OllamaSettings
 {
+    [JsonPropertyName("baseUrl")]
     public string BaseUrl { get; set; } = "http://localhost:11434";
+    [JsonPropertyName("model")]
     public string Model { get; set; } = "llama3.1";
 }
 

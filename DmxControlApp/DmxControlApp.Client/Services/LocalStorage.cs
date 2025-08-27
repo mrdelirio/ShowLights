@@ -12,9 +12,9 @@ public sealed class LocalStorage : ILocalStorage
         _jsRuntime = jsRuntime;
     }
 
-    public T? GetItem<T>(string key)
+    public async Task<T?> GetItemAsync<T>(string key)
     {
-        var json = GetItemRaw(key);
+        var json = await GetItemRawAsync(key);
         if (string.IsNullOrWhiteSpace(json)) return default;
         try
         {
@@ -26,25 +26,41 @@ public sealed class LocalStorage : ILocalStorage
         }
     }
 
-    public void SetItem<T>(string key, T value)
+    public async Task SetItemAsync<T>(string key, T value)
     {
         var json = JsonSerializer.Serialize(value);
-        SetItemRaw(key, json);
+        await SetItemRawAsync(key, json);
+    }
+
+    public async Task RemoveItemAsync(string key)
+    {
+        await _jsRuntime.InvokeVoidAsync("eval", $"localStorage.removeItem('{EscapeJs(key)}')");
+    }
+
+    // Metodi sincroni per compatibilità (non supportati in WebAssembly)
+    public T? GetItem<T>(string key)
+    {
+        throw new PlatformNotSupportedException("Synchronous methods are not supported in WebAssembly. Use async methods instead.");
+    }
+
+    public void SetItem<T>(string key, T value)
+    {
+        throw new PlatformNotSupportedException("Synchronous methods are not supported in WebAssembly. Use async methods instead.");
     }
 
     public void RemoveItem(string key)
     {
-        _ = _jsRuntime.InvokeVoidAsync("eval", $"localStorage.removeItem('{EscapeJs(key)}')");
+        throw new PlatformNotSupportedException("Synchronous methods are not supported in WebAssembly. Use async methods instead.");
     }
 
-    private string? GetItemRaw(string key)
+    private async Task<string?> GetItemRawAsync(string key)
     {
-        return _jsRuntime.InvokeAsync<string>("eval", $"localStorage.getItem('{EscapeJs(key)}')").AsTask().GetAwaiter().GetResult();
+        return await _jsRuntime.InvokeAsync<string>("eval", $"localStorage.getItem('{EscapeJs(key)}')");
     }
 
-    private void SetItemRaw(string key, string json)
+    private async Task SetItemRawAsync(string key, string json)
     {
-        _ = _jsRuntime.InvokeVoidAsync("eval", $"localStorage.setItem('{EscapeJs(key)}', '{EscapeJs(json)}')");
+        await _jsRuntime.InvokeVoidAsync("eval", $"localStorage.setItem('{EscapeJs(key)}', '{EscapeJs(json)}')");
     }
 
     private static string EscapeJs(string value)

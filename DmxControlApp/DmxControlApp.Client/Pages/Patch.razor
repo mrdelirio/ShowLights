@@ -47,7 +47,7 @@
 
     private async Task Load()
     {
-        var state = await Http.GetFromJsonAsync<AppStateDto>("/api/state");
+        var state = await Http.GetFromJsonAsync<AppStateDto>("http://localhost:5178/api/state");
         var patch = state?.Patches?.FirstOrDefault(p => p.Universe == universe);
         if (patch != null)
         {
@@ -58,7 +58,7 @@
 
     private async Task Save()
     {
-        var state = await Http.GetFromJsonAsync<AppStateDto>("/api/state") ?? new AppStateDto();
+        var state = await Http.GetFromJsonAsync<AppStateDto>("http://localhost:5178/api/state") ?? new AppStateDto();
         var existing = state.Patches?.FirstOrDefault(p => p.Universe == universe);
         if (existing == null)
         {
@@ -71,7 +71,7 @@
             existing.ActiveChannels = activeChannels;
             existing.Labels = labels;
         }
-        await Http.PostAsJsonAsync("/api/state", state);
+        await Http.PostAsJsonAsync("http://localhost:5178/api/state", state);
     }
 
     private sealed class AppStateDto { public List<PatchDto>? Patches { get; set; } }

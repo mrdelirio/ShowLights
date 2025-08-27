@@ -1,0 +1,17 @@
+{
+  "ArtNet": {
+    "targetIp": "192.168.4.1"
+  },
+  "AI": {
+    "provider": "Ollama",
+    "openAI": {
+      "baseUrl": "https://api.openai.com/v1",
+      "model": "gpt-4o-mini",
+      "apiKey": ""
+    },
+    "ollama": {
+      "baseUrl": "http://localhost:11434",
+      "model": "mistral"
+    }
+  }
+}

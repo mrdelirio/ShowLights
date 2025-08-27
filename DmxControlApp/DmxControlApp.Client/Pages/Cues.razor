@@ -74,7 +74,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var state = await Http.GetFromJsonAsync<AppStateDto>("/api/state");
+        var state = await Http.GetFromJsonAsync<AppStateDto>("http://localhost:5178/api/state");
         var scenes = state?.Scenes ?? new();
         var first = scenes.FirstOrDefault();
         if (first != null)
@@ -147,7 +147,7 @@
         var holdMs = (int)(cue.HoldMs / Math.Max(0.1, speed));
         if (snapToCue || fadeMs <= 0)
         {
-            await Http.PostAsJsonAsync("/api/artnet/send", new { universe = cue.Universe, values = cue.Values });
+            await Http.PostAsJsonAsync("http://localhost:5178/api/artnet/send", new { universe = cue.Universe, values = cue.Values });
             currentFrame = cue.Values.ToArray();
         }
         else
@@ -169,7 +169,7 @@
                 {
                     working[i] = (byte)(from[i] + ((to[i] - from[i]) * s) / steps);
                 }
-                await Http.PostAsJsonAsync("/api/artnet/send", new { universe = cue.Universe, values = working });
+                await Http.PostAsJsonAsync("http://localhost:5178/api/artnet/send", new { universe = cue.Universe, values = working });
                 await Task.Delay(50);
                 if (!isPlaying) return;
             }
@@ -189,14 +189,14 @@
 
     private async Task SaveCues()
     {
-        var state = await Http.GetFromJsonAsync<AppStateDto>("/api/state") ?? new AppStateDto();
+        var state = await Http.GetFromJsonAsync<AppStateDto>("http://localhost:5178/api/state") ?? new AppStateDto();
         state.Cues = cues.Select(c => new CueDto { Name = c.Name, Universe = c.Universe, Values = c.Values, FadeMs = c.FadeMs, HoldMs = c.HoldMs }).ToList();
-        await Http.PostAsJsonAsync("/api/state", state);
+        await Http.PostAsJsonAsync("http://localhost:5178/api/state", state);
     }
 
     private async Task LoadCues()
     {
-        var state = await Http.GetFromJsonAsync<AppStateDto>("/api/state") ?? new AppStateDto();
+        var state = await Http.GetFromJsonAsync<AppStateDto>("http://localhost:5178/api/state") ?? new AppStateDto();
         cues = state.Cues.Select(c => new Cue(c.Name, c.Universe, c.Values ?? Array.Empty<byte>(), c.FadeMs, c.HoldMs)).ToList();
         var first = cues.FirstOrDefault();
         if (first != null)
